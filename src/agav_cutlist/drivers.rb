@@ -35,7 +35,7 @@ class OutputDriver
         @component = CompactDisplay.new(@renderer,@showVolumeInMetric)
 #	compact list is sorted by component names
         @solidParts.sortByName
-	puts "OutputDriver::openParts - Sorting solid parts by name"
+	      puts "OutputDriver::openParts - Sorting solid parts by name"
       else
         @component = Display.new(@renderer,@showVolumeInMetric)
       end

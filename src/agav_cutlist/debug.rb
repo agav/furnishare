@@ -1,8 +1,7 @@
-# ~/Source/ExampleExtension/src/hello/debug.rb
-module Agav::RESTART
+module Agav::Restart
 
   # Reload extension by running this method from the Ruby Console:
-  #   Example::HelloWorld.reload
+  #   Agav::RESTART.reload
   def self.reload
     original_verbose = $VERBOSE
     $VERBOSE = nil
