@@ -1,5 +1,5 @@
 module Agav
-	module AgavCutList
+	module Furnishare
 #-----------------------------------------------------------------------------
 #########################
 # Renderer superclass   #
@@ -39,7 +39,7 @@ class HtmlRenderer < Renderer
     # display the model name at the top of the page
     # make sure to htmlize the model name
     puts modelTitle
-    modelTitle = AgavCutList::string_to_html(modelTitle)
+    modelTitle = Furnishare::string_to_html(modelTitle)
     puts modelTitle
     #html +="<BR><B><H4 style=\"color:#7d7d4f\">"+modelTitle+"</H4></B>"
     # color/size is controlled by result.css
@@ -81,7 +81,7 @@ class HtmlRenderer < Renderer
     html = html+"<tr>"
     for c in columns
       html = html+"<td>"
-      html = html+AgavCutList::string_to_html(c)
+      html = html+Furnishare::string_to_html(c)
       html = html+"</td>"
     end ## end for
     html = html+"</tr>"
@@ -215,7 +215,7 @@ class HtmlLayoutRenderer  < LayoutRenderer
     labely = y-20
     # a board starts a new offset if it the 2nd board in a section\
     # if it is a new section, then the first board is not offset.
-    puts "x1=" + x.to_s + " y1=" + y.to_s + " labely1=" + labely.to_s + " offsetY1=" + @offsetY.to_s if AgavCutList.verbose
+    puts "x1=" + x.to_s + " y1=" + y.to_s + " labely1=" + labely.to_s + " offsetY1=" + @offsetY.to_s if Furnishare.verbose
     # once we have at least one board, the newSection flag is turned off
     # If this board is not part of the new section ( in which the title and the board are placed in the same container)
     # then start a new page now before adding the board
@@ -229,7 +229,7 @@ class HtmlLayoutRenderer  < LayoutRenderer
     end
     y = offsetY(y)
     labely = offsetY(labely)
-    puts "x2=" + x.to_s + " y2=" + y.to_s + " labely1=" + labely.to_s + " offsetY2=" + @offsetY.to_s if AgavCutList.verbose
+    puts "x2=" + x.to_s + " y2=" + y.to_s + " labely1=" + labely.to_s + " offsetY2=" + @offsetY.to_s if Furnishare.verbose
     # put each board in its own cell so it becomes scrollable
     #html += "cutlistLayout.htm += \'<div style=\"position:relative;width:#{length+50}px;height:#{height+50}px;\"><table cellpadding=\"0\" cellspacing=\"0\"><tr><td>\';"
     html += setColor(color)
@@ -306,7 +306,7 @@ class HtmlLayoutRenderer  < LayoutRenderer
     # display the model name at the top of the page
     html = html + setColor("#7d7d4f")
     html = html + " cutlistLayout.setFont(\"verdana\",\"14px\",Font.BOLD);"
-    string = AgavCutList::string_to_html(string)
+    string = Furnishare::string_to_html(string)
     html = html + " cutlistLayout.drawString(\"#{string}\",#{x},#{y});"
     return html
   end
@@ -398,7 +398,7 @@ class HtmlLayoutRenderer  < LayoutRenderer
     html += "cutlistLayout.cnv.className = \"graphicScreen\";"
     html += "cutlistLayout.cnv.style.fontSize=0;"
     html += "cutlistLayout.cont.appendChild(cutlistLayout.cnv);"
-    puts "Creating div=" + contName + " with subdiv=" + divName if AgavCutList.verbose1
+    puts "Creating div=" + contName + " with subdiv=" + divName if Furnishare.verbose1
     
     # Make another div within the layoutDiv for the printing html
     divPrintName = "divPrint" + @divNumber.to_s
@@ -407,7 +407,7 @@ class HtmlLayoutRenderer  < LayoutRenderer
     html += "cutlistLayout.cnvPrint.className = \"graphicPrint\";"
     html += "cutlistLayout.cnvPrint.style.fontSize=0;"
     html += "cutlistLayout.cont.appendChild(cutlistLayout.cnvPrint);"
-    puts "Creating Print div=" + contName + " with subdiv=" + divPrintName if AgavCutList.verbose1
+    puts "Creating Print div=" + contName + " with subdiv=" + divPrintName if Furnishare.verbose1
     return html
   end
   
@@ -592,7 +592,7 @@ class FileRenderer < Renderer
     # that sketchup selects the decimal to be used on length outputs
     sketchupLocale = Sketchup.get_locale
     puts "Sketchup locale=" + sketchupLocale
-    cutlistLocale = AgavCutList::decimalNotation
+    cutlistLocale = Furnishare::decimalNotation
     if ( cutlistLocale == "."  )
       # The following line, if uncommented, uses ',' characters instead of tab as the delimiter
       @delimiter = ","
@@ -630,7 +630,7 @@ class FileRenderer < Renderer
     txt = ""
     for c in columns
       # do any text processing on csv fields - eg: remove the ~
-      txt = txt+AgavCutList::string_to_csv(c)
+      txt = txt+Furnishare::string_to_csv(c)
       txt = txt+@delimiter 
     end ## end for
     txt = txt+"\n"

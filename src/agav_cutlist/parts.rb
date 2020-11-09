@@ -1,5 +1,5 @@
 module Agav
-  module AgavCutList
+  module Furnishare
     #-----------------------------------------------------------------------------
     # Class PartList - holds all selected components which are neither a
     # solid part nor a sheet part - typically this would be hardware...or things like bryce
@@ -67,6 +67,17 @@ module Agav
 
     end
 
+
+    ###Class Edge
+    class Edge
+      attr_accessor :material
+
+
+      def initialize(material = nil)
+        @material = material
+      end
+    end
+
     ###Class PartList
 
     #-----------------------------------------------------------------------------
@@ -86,7 +97,7 @@ module Agav
         else
           # is this a group entity? If so, then use our private method to find the definition
           if c.is_a?(Sketchup::Group)
-            group_definition = AgavCutList::group_definition(c)
+            group_definition = Furnishare::group_definition(c)
             boundingBox = group_definition.bounds
             #puts "CutListPart - affirmative check for respond to bounding box for group"
           end
@@ -98,9 +109,9 @@ module Agav
         scalez = Math.sqrt(trans[8] ** 2 + trans[9] ** 2 + trans[10] ** 2)
         #puts "name=" + name.to_s + "scalex=" + scalex.to_s + " scaley=" + scaley.to_s + " scalez=" + scalez.to_s
 
-        width = boundingBox.width * scalex
-        height = boundingBox.height * scaley
-        depth = boundingBox.depth * scalez
+        size_x = boundingBox.width * scalex
+        size_y = boundingBox.height * scaley
+        size_z = boundingBox.depth * scalez
 
         left = Geom::BoundingBox.new
         right = Geom::BoundingBox.new
@@ -108,14 +119,34 @@ module Agav
         down = Geom::BoundingBox.new
         front = Geom::BoundingBox.new
         back = Geom::BoundingBox.new
-        if depth < height and depth < width
+
+        #				       F,U,R	  U,R,F
+        #        			   ↓      ↙
+        # 			      6-------7
+        # 			     /|      /|
+        # 			    / |     / |
+        # L,B,D →  4-------5  |	← R,F,U
+        # 			   |  2----|--3
+        # 			   | /     | /
+        # 			   0-------1
+        #      		↗		  ↑
+        # 	   D,L,B	B,D,L
+        #
+
+        if size_z < size_y and size_z < size_x
+          @thickness = size_z
+          @length = size_x
+          @width = size_y
           left.add(boundingBox.corner(0), boundingBox.corner(2), boundingBox.corner(4), boundingBox.corner(6))
           right.add(boundingBox.corner(1), boundingBox.corner(3), boundingBox.corner(5), boundingBox.corner(7))
           up.add(boundingBox.corner(2), boundingBox.corner(3), boundingBox.corner(6), boundingBox.corner(7))
           down.add(boundingBox.corner(0), boundingBox.corner(1), boundingBox.corner(4), boundingBox.corner(5))
           front.add(boundingBox.corner(4), boundingBox.corner(5), boundingBox.corner(6), boundingBox.corner(7))
           back.add(boundingBox.corner(1), boundingBox.corner(1), boundingBox.corner(2), boundingBox.corner(3))
-        elsif height < depth and height < width
+        elsif size_y < size_z and size_y < size_x
+          @thickness = size_y
+          @length = size_z
+          @width = size_x
           left.add(boundingBox.corner(1), boundingBox.corner(1), boundingBox.corner(2), boundingBox.corner(3))
           right.add(boundingBox.corner(4), boundingBox.corner(5), boundingBox.corner(6), boundingBox.corner(7))
           up.add(boundingBox.corner(1), boundingBox.corner(3), boundingBox.corner(5), boundingBox.corner(7))
@@ -123,6 +154,9 @@ module Agav
           front.add(boundingBox.corner(2), boundingBox.corner(3), boundingBox.corner(6), boundingBox.corner(7))
           back.add(boundingBox.corner(0), boundingBox.corner(1), boundingBox.corner(4), boundingBox.corner(5))
         else
+          @thickness = size_x
+          @length = size_y
+          @width = size_z
           left.add(boundingBox.corner(0), boundingBox.corner(1), boundingBox.corner(4), boundingBox.corner(5))
           right.add(boundingBox.corner(2), boundingBox.corner(3), boundingBox.corner(6), boundingBox.corner(7))
           up.add(boundingBox.corner(4), boundingBox.corner(5), boundingBox.corner(6), boundingBox.corner(7))
@@ -133,40 +167,36 @@ module Agav
         #puts "width=" + width.to_s + " height=" + height.to_s + " depth=" + depth.to_s
 
         #sizes = getSortedArray([boundingBox.width,boundingBox.height,boundingBox.depth])
-        sizes = getSortedArray([width, height, depth])
-
         #assume the longest dimension is the length and shortest is the thickness
-        @length = sizes[2].inch
+
         @lengthInFeet = @length.to_feet
-        @width = sizes[1].inch
-        @thickness = sizes[0].inch
         dimCalculations()
         @material = material
         @name = strip(name, @length.to_s, @width.to_s, @thickness.to_s)
         @subAssemblyName = strip(subAssemblyName, @length.to_s, @width.to_s, @thickness.to_s)
         @canRotate = true
         @metricVolume = metricVolume
-        @metric = AgavCutList.metricModel?
+        @metric = Furnishare.metricModel?
         @locationOnBoard = nil
 
-
+        @left = Edge.new()
+        @right = Edge.new()
+        @up = Edge.new()
+        @down = Edge.new()
         c.entities.each do |entity|
           if entity.is_a? Sketchup::Face
-            if left.contains?(entity.bounds.center)
-              puts "left " + entity.material.name.to_s
-              end
-            if right.contains?(entity.bounds.center)
-              puts "right " + entity.material.name.to_s
-              end
-            if up.contains?(entity.bounds.center)
-              puts "up " + entity.material.name.to_s
-            end
-            if down.contains?(entity.bounds.center)
-              puts "down " + entity.material.name.to_s
+            face_center = entity.bounds.center
+            if left.contains?(face_center)
+              @left.material = entity.material.name
+            elsif right.contains?(face_center)
+              @right.material = entity.material.name
+            elsif up.contains?(face_center)
+              @up.material = entity.material.name
+            elsif down.contains?(face_center)
+              @down.material = entity.material.name
             end
           end
         end
-
       end
 
       def dimCalculations
@@ -176,8 +206,24 @@ module Agav
         @boardFeet = @volume / 144
         # part in pixels scale  12in=100px
         # Useful for display purpose but not accurate enough for part comparisons
-        @length_px = AgavCutList::float_round_to(0, ((@length / 12) * 100).to_f)
-        @width_px = AgavCutList::float_round_to(0, ((@width / 12) * 100).to_f)
+        @length_px = Furnishare::float_round_to(0, ((@length / 12) * 100).to_f)
+        @width_px = Furnishare::float_round_to(0, ((@width / 12) * 100).to_f)
+      end
+
+      def getLeft
+        @left
+      end
+
+      def getRight
+        @right
+      end
+
+      def getUp
+        @up
+      end
+
+      def getDown
+        @down
       end
 
       # Bubble sort
@@ -224,9 +270,9 @@ module Agav
       def getTotalLength
         if @metricVolume
           # 1 ft = 0.3048 metres
-          AgavCutList::float_round_to(4, (@lengthInFeet * 0.3048))
+          Furnishare::float_round_to(4, (@lengthInFeet * 0.3048))
         else
-          AgavCutList::float_round_to(2, @lengthInFeet)
+          Furnishare::float_round_to(2, @lengthInFeet)
         end
       end
 
@@ -284,9 +330,9 @@ module Agav
           # divide by 1000000 to get cu.m.
           #(@boardFeet*2359.7424).round_to(6)
           #(@width.to_l*@length.to_l*@thickness.to_l*2359.7383).round_to(6)
-          AgavCutList::float_round_to(6, (@boardFeet * (2359.7372232207958956904236222001 / 1000000)))
+          Furnishare::float_round_to(6, (@boardFeet * (2359.7372232207958956904236222001 / 1000000)))
         else
-          AgavCutList::float_round_to(2, @boardFeet)
+          Furnishare::float_round_to(2, @boardFeet)
         end
       end
 
@@ -303,9 +349,9 @@ module Agav
         if @metricVolume
           # 1sq ft = 929.0304sq cm
           # divide by 10000 to get sq m
-          AgavCutList::float_round_to(6, (@squareFeet * (0.092903040189522201889968968842358)))
+          Furnishare::float_round_to(6, (@squareFeet * (0.092903040189522201889968968842358)))
         else
-          AgavCutList::float_round_to(2, @squareFeet)
+          Furnishare::float_round_to(2, @squareFeet)
         end
       end
 
@@ -335,7 +381,7 @@ module Agav
       def getLocationOnBoardInPx
         # return top left coordinate (x,y) of the part's location on the board for drawing purposes
         # convert the standard dimension units expressed to Px ( 100px/inch)
-        Array[AgavCutList::float_round_to(0, ((@locationOnBoard[0] / 12) * 100).to_f), AgavCutList::float_round_to(0, ((@locationOnBoard[1] / 12) * 100).to_f)]
+        Array[Furnishare::float_round_to(0, ((@locationOnBoard[0] / 12) * 100).to_f), Furnishare::float_round_to(0, ((@locationOnBoard[1] / 12) * 100).to_f)]
       end
 
       def changeWidth(width)
@@ -352,8 +398,8 @@ module Agav
         # CutList Plus has some import limitations. Inches, feet, mm and cm are
         # accepted but not meters. So here we convert the measure back to a float in inches
         # if the model is in meters. This is just for CutListPlus import file generation
-        if AgavCutList::modelInMeters?
-          measure = AgavCutList::float_round_to(4, measure.to_f)
+        if Furnishare::modelInMeters?
+          measure = Furnishare::float_round_to(4, measure.to_f)
         end
         return measure
       end
@@ -379,10 +425,7 @@ module Agav
       # material - is a string of the material for this entity
       # nominalMargin is a number in 16ths of the allowance required in the thickness over the final part size
       # quarter is an array of 4 elements, being boolean values of fourq, fiveq, sixq and eightq respectively as entered by the user
-      def initialize(c, name, subAssemblyName, material, nominalMargin, quarter, nominalOut, metricVolume)
-        @nominalMargin = nominalMargin.inch
-        @nominalOut = nominalOut
-        @quarter = quarter
+      def initialize(c, name, subAssemblyName, material, metricVolume)
         super(c, name, subAssemblyName, material, metricVolume)
       end
 
@@ -396,35 +439,18 @@ module Agav
       ## Turn a thickness into a nominal thickness ##
       def handleNominalSize(inThickness)
         result = inThickness
-        #keep marginThickness for use later in the layout
-        @marginThickness = @nominalMargin + inThickness
-        @marginThickness = AgavCutList::float_round_to(4, @marginThickness)
-        if ((@quarter[0]) && @marginThickness <= 1)
-          result = 1.inch
-        elsif ((@quarter[1]) && @marginThickness <= 1.25)
-          result = (1.25).inch
-        elsif ((@quarter[2]) && @marginThickness <= 1.5)
-          result = (1.5).inch
-        elsif ((@quarter[3]) && @marginThickness <= 2)
-          result = 2.inch
-        elsif ((@quarter[4]) && @marginThickness <= 2.5)
-          result = (2.5).inch
-        end #if
         return result
       end
 
       ## handleNominalSize
 
       def getThicknessString
-        if @nominalOut
-          @nominalThickness.to_l.to_s
-        else
-          @thickness.to_l.to_s
-        end
+
+        @thickness.to_l.to_s
       end
 
       def getMarginThickness
-        @marginThickness
+        0
       end
 
       def getThickness

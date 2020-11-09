@@ -3,14 +3,14 @@ require 'extensions'
 require 'agav_cutlist/cutlistutl'
 
 module Agav
-	module AgavCutList
-		@su_cutlist_extension = SketchupExtension.new "Agav cutlist",
-		"agav_cutlist/CutListAndMaterials.rb"
+	module Furnishare
+		@furnishare_extension = SketchupExtension.new "Agav cutlist",
+																									"agav_cutlist/FurnishareAndMaterials.rb"
 
-		@su_cutlist_extension.description = AgavCutList.short_description
-		@su_cutlist_extension.version = AgavCutList.version
-		@su_cutlist_extension.copyright = AgavCutList.year
-		@su_cutlist_extension.creator = AgavCutList.author
-		Sketchup.register_extension @su_cutlist_extension, true
+		@furnishare_extension.description = Furnishare.short_description
+		@furnishare_extension.version = Furnishare.version
+		@furnishare_extension.copyright = Furnishare.year
+		@furnishare_extension.creator = Furnishare.author
+		Sketchup.register_extension @furnishare_extension, true
 	end
 end

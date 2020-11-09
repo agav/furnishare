@@ -1,5 +1,5 @@
 module Agav
-	module AgavCutList
+	module Furnishare
 #-----------------------------------------------------------------------------
 # Class BoardWarehouse is an abstraction of all information about boards or sheet goods 
 # which are available to use for the layout.
@@ -348,8 +348,8 @@ class Board
     # actual board size is used. Using px has the problem of, well, pixelation
     # which takes away accuracy because of its inherent need to subdivide into a
     # unit with poor granularity.
-    @length_px = AgavCutList::float_round_to(0, ((@length/12)*100))
-    @width_px = AgavCutList::float_round_to(0, ((@width/12)*100))
+    @length_px = Furnishare::float_round_to(0, ((@length/12)*100))
+    @width_px = Furnishare::float_round_to(0, ((@width/12)*100))
     @area_px = @length_px*@width_px
     @metricVolume = metricVolume
   end
@@ -397,9 +397,9 @@ class Board
     if @metricVolume
       # 1bd ft = 2359.7424/1000000 cu m
       # Use as much accuracy as possible.
-      AgavCutList::float_round_to(4, @boardFeet*(2359.7372232207958956904236222001/1000000))
+      Furnishare::float_round_to(4, @boardFeet*(2359.7372232207958956904236222001/1000000))
     else
-      AgavCutList::float_round_to(2, @boardFeet)
+      Furnishare::float_round_to(2, @boardFeet)
     end
   end
   def getRawBoardFeet
@@ -410,7 +410,7 @@ class Board
     return ' bd.ft.' if !@metricVolume
   end
   def getBoardFeetString
-    string = AgavCutList::decimal_to_comma(getBoardFeet.to_s)
+    string = Furnishare::decimal_to_comma(getBoardFeet.to_s)
     string += getBoardFeetUnitsString
     return string
   end
@@ -630,7 +630,7 @@ class LayoutBoard
     @kerfSize = @layoutOptions[:sawKerfSize] if @layoutOptions[:useSawKerf]
     @kerfSize = 0 if !@layoutOptions[:useSawKerf]
     #debug
-    puts "Kerf Size=" + @kerfSize.to_s if AgavCutList.verboseParameters
+    puts "Kerf Size=" + @kerfSize.to_s if Furnishare.verboseParameters
     
     # intialize the root node
     @root = Node.new(self)
@@ -640,7 +640,7 @@ class LayoutBoard
     # so even if the part is exactly the width of the board requiring no cuts, it will fit
     @root.addLeft( {:xy =>topLeft,:length =>@board.getLength+@kerfSize,:width =>@board.getWidth+@kerfSize} )
     #debug
-    puts "Kerf enhanced board size: length=" + (@board.getLength+@kerfSize).to_s + " width=" + (@board.getWidth+@kerfSize).to_s if AgavCutList.verbosePartPlacement
+    puts "Kerf enhanced board size: length=" + (@board.getLength+@kerfSize).to_s + " width=" + (@board.getWidth+@kerfSize).to_s if Furnishare.verbosePartPlacement
     @boardFull = false
   end
 
@@ -663,7 +663,7 @@ class LayoutBoard
     # mark the space used by this part as taken and adjust the tree of available space
     # The space used on the layout board must include any kerf rquired, so we insert a part which is the layoutPart size enhanced by the kerf sizes
     insertPartInTree(leafNode,{:xy => leafNode.rect[:xy], :length => layoutPart.getLength+@kerfSize, :width => layoutPart.getWidth+@kerfSize })
-    puts "part added!" if AgavCutList.verbosePartPlacement
+    puts "part added!" if Furnishare.verbosePartPlacement
     return true
   end
   
@@ -674,7 +674,7 @@ class LayoutBoard
     leaf.parent.addPart( layoutPart )
     #debug
     puts "Adding part at location:[" +  (leaf.rect[:xy][0]).to_s + "," + (leaf.rect[:xy][1]).to_s + "]" + 
-           " length=" + (layoutPart[:length]).to_l.to_s + " width=" +  (layoutPart[:width]).to_l.to_s if AgavCutList.verbosePartPlacement
+           " length=" + (layoutPart[:length]).to_l.to_s + " width=" +  (layoutPart[:width]).to_l.to_s if Furnishare.verbosePartPlacement
     
     #remove the branch not chosen from the parent and link in a new Node on the branch chosen
     # figure out if we are the right or left node and delete the other one - we dont need it anymore cause it wasn't chosen
@@ -783,9 +783,9 @@ class LayoutBoard
     leaf = true if node.getNodeType == "leaf"
     #look at the leaf if we are a leaf
     if leaf
-      puts "look at a leaf" if AgavCutList.verbose
-      puts "ll=" + node.rect[:length].to_l.to_s + "lw="  + node.rect[:width].to_l.to_s if AgavCutList.verbose
-      puts "pl=" + length.to_l.to_s + "pw=" + width.to_l.to_s if AgavCutList.verbose
+      puts "look at a leaf" if Furnishare.verbose
+      puts "ll=" + node.rect[:length].to_l.to_s + "lw="  + node.rect[:width].to_l.to_s if Furnishare.verbose
+      puts "pl=" + length.to_l.to_s + "pw=" + width.to_l.to_s if Furnishare.verbose
       # won't fit if length is too short
       
       # Note: make the comparisons here after applying the length transformation.
@@ -800,7 +800,7 @@ class LayoutBoard
       return node
     end
     # it's a node
-    puts "it's a node" if AgavCutList.verbose
+    puts "it's a node" if Furnishare.verbose
     #go left
     bestLeft = findBestFit(node.left,length,width) 
     #go right
@@ -864,7 +864,7 @@ class LayoutBoard
     # we can work these numbers in pixels - good as any - as long as the units are consistent
     #usedArea = areaOfPartsOnBoard
     usedArea = areaOfPartsOnBoardFromList
-    @usedAreaPercentage = AgavCutList::float_round_to(2, ((usedArea/@board.getAreaPx)*100))
+    @usedAreaPercentage = Furnishare::float_round_to(2, ((usedArea/@board.getAreaPx)*100))
   end
   def getUsedAreaPercentage
     @usedAreaPercentage
@@ -874,7 +874,7 @@ class LayoutBoard
   end
   
   def to_s
-    return @board.to_s + (' (' + AgavCutList::decimal_to_comma(getUsedAreaPercentage.to_s) + '%)' if getUsedAreaPercentage != 0 )
+    return @board.to_s + (' (' + Furnishare::decimal_to_comma(getUsedAreaPercentage.to_s) + '%)' if getUsedAreaPercentage != 0 )
   end
   
 end #class LayourBoard

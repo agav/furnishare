@@ -40,20 +40,79 @@ module Agav
           :svgLayout => false
       }
 
+      layout_Default_Options = {
+          :fourq => false,
+          :fiveq => false,
+          :sixq => false,
+          :eightq => false,
+          :tenq => false,
+          :nominalMargin => 0,
+          :nominalOut => false,
+          :board4w => false,
+          :board6w => true,
+          :board8w => false,
+          :board10w => false,
+          :board12w => false,
+          :board2l => false,
+          :board4l => false,
+          :board6l => false,
+          :board8l => true,
+          :board10l => false,
+          :board12l => false,
+          :sheet2w => false,
+          :sheet4w => true,
+          :sheet5w => false,
+          :sheet2l => false,
+          :sheet4l => false,
+          :sheet5l => false,
+          :sheet8l => true,
+          :nominalWidth => true,
+          :kerfSize => 2.inch / 16,
+          :splitWideParts => true,
+          :splitThickParts => false,
+          :layoutRuleA => true,
+          :layoutRuleB => true,
+          :layoutByMaterial => false,
+          :displayUnplacedParts => true,
+          :useSawKerf => true,
+          :sawKerfSize => 0,
+          :sawKerfUnits => "8th"
+      }
+
       @@options = {
           :cutlist_Options => cutlist_Default_Options,
+          :layout_Options => layout_Default_Options
       }
 
       ##
       # This entry point method is called by the interactive GUI ( html) configurator
       ##
-      def sketchupInit(furnishare_options)
-
+      def sketchupInit(cutlist_options, layout_options)
         # merge user selected options with the defaults to get the working set for this session
-        @@options[:cutlist_Options].merge!(furnishare_options)
+        @@options[:layout_Options].merge!(layout_options)
+        @@options[:cutlist_Options].merge!(cutlist_options)
 
         # determine the flavor of the model, metric or inches
         @metric = Furnishare::metricModel?
+
+        # sets whether or not we ask for permission to update group instances found in the model the first time we encounter
+        # a case of it. Leave off for now. This means
+        # that it won't ask and so permission is never granted. This feature might be useful but potentially confusing because
+        # it alerts to a sketchup internal condition and the user may not realize the implications of answering one way or another.
+        # (If you modify a group instance, it automatically is made unique so that the group definition no longer applies to it. If you then
+        # wanted to make a change to the group definition, you would have to make the same change to ALL instances, thus losing some
+        # of the advantages of it being in a group in the first place.
+        @askFirstTime = false
+
+        # Determine the units to use for volume measurements in the output
+        # If metric units selected, then use metric volume measurements ( ie cu.m.)
+        # If metric units selected but forceBoardFeet is on, then use board feet
+        # If Imperial measure, then always use board feet
+        @volumeMeasureInMetric = (@metric && !@@options[:cutlist_Options][:forceBoardFeet])
+
+        # establish specific sets of options, based on layout and cutlist options, one for boards and one for sheets
+        setBoardOptions()
+        setSheetOptions()
 
         # create an input board list - empty for now until we create an interface for it
         @inBoardList = BoardList.new()
@@ -62,12 +121,153 @@ module Agav
         main()
       end
 
+      # def Reporter::sketchupInit
+
+      def setBoardOptions
+        setBoardThicknessOptions
+        setBoardWidthOptions
+        setBoardLengthOptions
+        @boardOptions = [@boardLengthOptions, @boardWidthOptions, @quarter, @@options[:layout_Options][:nominalWidth]]
+      end
+
+      def setSheetOptions
+        setSheetWidthOptions
+        setSheetLengthOptions
+        # sheets always use nominalWidth, so set that option true always
+        # sheets don't use quarter options, so set up a dummy one for sheets with all false
+        @sheetQuarter = [false, false, false, false, false]
+        @sheetOptions = [@sheetLengthOptions, @sheetWidthOptions, @sheetQuarter, true]
+      end
+
+      def setBoardThicknessOptions
+        #produce an array with all four options placed in it in order
+        @quarter = [@@options[:layout_Options][:fourq],
+                    @@options[:layout_Options][:fiveq],
+                    @@options[:layout_Options][:sixq],
+                    @@options[:layout_Options][:eightq],
+                    @@options[:layout_Options][:tenq]]
+      end
+
+      def setBoardWidthOptions
+        # produce an array with the different widths available
+        # this construct makes it easier to iterate over the available options
+        # convert lengths, which are in feet, to inches, so that all units are the same internally.
+        @boardWidthOptions = Array.new
+        @boardWidthOptions.push(4) if @@options[:layout_Options][:board4w]
+        @boardWidthOptions.push(6) if @@options[:layout_Options][:board6w]
+        @boardWidthOptions.push(8) if @@options[:layout_Options][:board8w]
+        @boardWidthOptions.push(10) if @@options[:layout_Options][:board10w]
+        @boardWidthOptions.push(12) if @@options[:layout_Options][:board12w]
+      end
+
+      def setBoardLengthOptions
+        # produce an array with the different lengths available
+        # this construct makes it easier to iterate over the available options
+        @boardLengthOptions = Array.new
+        @boardLengthOptions.push(2 * 12) if @@options[:layout_Options][:board2l]
+        @boardLengthOptions.push(4 * 12) if @@options[:layout_Options][:board4l]
+        @boardLengthOptions.push(6 * 12) if @@options[:layout_Options][:board6l]
+        @boardLengthOptions.push(8 * 12) if @@options[:layout_Options][:board8l]
+        @boardLengthOptions.push(10 * 12) if @@options[:layout_Options][:board10l]
+        @boardLengthOptions.push(12 * 12) if @@options[:layout_Options][:board12l]
+      end
+
+      def setSheetWidthOptions
+        @sheetWidthOptions = Array.new
+        # If the sketchup model is in metric units, then use standard metric equivalent sizes for the plywood but store in inches
+        if (Furnishare::metricModel?)
+          @sheetWidthOptions.push(610 / 25.4) if @@options[:layout_Options][:sheet2w]
+          @sheetWidthOptions.push(1220 / 25.4) if @@options[:layout_Options][:sheet4w]
+          @sheetWidthOptions.push(1525 / 25.4) if @@options[:layout_Options][:sheet5w]
+        else
+          @sheetWidthOptions.push(2 * 12) if @@options[:layout_Options][:sheet2w]
+          @sheetWidthOptions.push(4 * 12) if @@options[:layout_Options][:sheet4w]
+          @sheetWidthOptions.push(5 * 12) if @@options[:layout_Options][:sheet5w]
+        end
+      end
+
+      def setSheetLengthOptions
+        @sheetLengthOptions = Array.new
+        # If the sketchup model is in metric units, then use standard metric equivalent sizes for the plywood but store in inches
+        if (Furnishare::metricModel?)
+          @sheetLengthOptions.push(610 / 25.4) if @@options[:layout_Options][:sheet2l]
+          @sheetLengthOptions.push(1220 / 25.4) if @@options[:layout_Options][:sheet4l]
+          @sheetLengthOptions.push(1525 / 25.4) if @@options[:layout_Options][:sheet5l]
+          @sheetLengthOptions.push(2440 / 25.4) if @@options[:layout_Options][:sheet8l]
+        else
+          @sheetLengthOptions.push(2 * 12) if @@options[:layout_Options][:sheet2l]
+          @sheetLengthOptions.push(4 * 12) if @@options[:layout_Options][:sheet4l]
+          @sheetLengthOptions.push(5 * 12) if @@options[:layout_Options][:sheet5l]
+          @sheetLengthOptions.push(8 * 12) if @@options[:layout_Options][:sheet8l]
+        end
+      end
+
+      # does the main work of the reporter class ie: this is the mainline for the cutlist plugin
       def main
+        # derive the component set required for cutlist from this model. Method components() establishes the working cutlist database
         if (components() != nil)
+          # produce a layout if requested. Layout() creates the necessary database for layout output based on the cutlist database
+          if (@@options[:cutlist_Options][:layout] || @@options[:cutlist_Options][:svgLayout])
+            layout()
+          end
+          # produce the requested cutlist output in the requested formats
           output()
         end
       end
 
+      def layout
+        ### show VCB and status info...
+        Sketchup::set_status_text(("CutList layout generation..."), SB_PROMPT)
+        Sketchup::set_status_text(" ", SB_VCB_LABEL)
+        Sketchup::set_status_text(" ", SB_VCB_VALUE)
+
+        # Note:We reference the show parts and show sheet parts options here instead of on the output for efficiency. cutting down on the
+        # generation of layout speeds up the output. The output will just display whatever was generated here.
+        # determine if we need to create a layout for solid parts
+        @unplacedPartsList = CutListPartList.new
+        if !@solidPartList.empty? && @@options[:cutlist_Options][:showComps]
+          # Split the list of parts into categories to be used for layout based on the selection options
+          # make a copy of the partLists object because the layout engine is destructive
+          solidPartList = @solidPartList.deep_clone
+          solidPartPreParser = SolidPartPreParser.new(solidPartList, @inBoardList, @boardOptions, @@options[:layout_Options], @volumeMeasureInMetric)
+          @listOfSolidPartsLists, unplacedPartsList = solidPartPreParser.run
+          @unplacedPartsList + (unplacedPartsList) if unplacedPartsList != nil
+
+          # for each category of solid parts, layout on as many boards as required
+          @layoutBoards = Array.new
+          @listOfSolidPartsLists.each { |solidPartList|
+            solidPartLayoutEngine = BestFitLayoutEngine.new(solidPartList, @inBoardList, @boardOptions, @@options[:layout_Options], @volumeMeasureInMetric)
+            layoutBoards, unplacedPartsList = solidPartLayoutEngine.run
+            @layoutBoards += layoutBoards if layoutBoards != nil
+            puts "Boards Added=" + @layoutBoards.size.to_s if Furnishare.verbosePartPlacement
+            @unplacedPartsList + (unplacedPartsList) if unplacedPartsList != nil
+            puts "Unplaced Solid Parts during layout=" + unplacedPartsList.count.to_s if Furnishare.verbosePartPlacement
+          }
+        end
+        # determine if we need to create a layout for sheet parts
+        if !@sheetPartList.empty? && @@options[:cutlist_Options][:showSheet]
+          # Split the list of sheet parts into categories to be used for layout based on the selection options
+          sheetPartList = @sheetPartList.deep_clone
+          sheetPartPreParser = SheetPartPreParser.new(sheetPartList, @inBoardList, @sheetOptions, @@options[:layout_Options], @volumeMeasureInMetric)
+          @listOfSheetPartsLists, unplacedPartsList = sheetPartPreParser.run
+          @unplacedPartsList + (unplacedPartsList) if unplacedPartsList != nil
+
+          # for each category of sheet parts, layout on as many boards as required
+          @layoutSheets = Array.new
+          @listOfSheetPartsLists.each { |sheetPartList|
+            sheetPartLayoutEngine = BestFitLayoutEngine.new(sheetPartList, @inBoardList, @sheetOptions, @@options[:layout_Options], @volumeMeasureInMetric)
+            layoutSheets, unplacedPartsList = sheetPartLayoutEngine.run
+            @layoutSheets += layoutSheets if layoutSheets != nil
+            puts "Sheets Added=" + @layoutSheets.size.to_s if Furnishare.verbosePartPlacement
+            @unplacedPartsList + (unplacedPartsList) if unplacedPartsList != nil
+            puts "Unplaced Sheet Parts during layout=" + unplacedPartsList.count.to_s if Furnishare.verbosePartPlacement
+          }
+        end
+        Sketchup::set_status_text((""), SB_PROMPT)
+      end
+
+      ### Get the material assigned faces within a component if it is not assigned at
+      ### the component level
       def getMaterial(component)
         bits = nil
         if component.is_a?(Sketchup::ComponentInstance)
@@ -200,7 +400,9 @@ module Agav
                 else
                   solidPart = SolidPart.new(c,
                                             name, subAssemblyName, material,
-
+                                            @@options[:layout_Options][:nominalMargin],
+                                            @quarter,
+                                            @@options[:layout_Options][:nominalOut],
                                             @volumeMeasureInMetric)
                   # add to the list
                   @solidPartList.add(solidPart)
