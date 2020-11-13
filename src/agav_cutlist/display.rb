@@ -5,9 +5,9 @@ module Agav
     #########################
     class Display_class
 
-      def initialize(inRenderer, inMetric)
+      def initialize(inRenderer)
         @renderer = inRenderer
-        @metric = inMetric
+        @metric = true
         @roundToNumOfDigits = 2
         @roundToNumOfDigits = 4 if (@metric)
       end
@@ -63,8 +63,8 @@ module Agav
     #########################
     class Display < Display_class
 
-      def initialize(inRenderer, inMetric)
-        super(inRenderer, inMetric)
+      def initialize(inRenderer)
+        super(inRenderer)
         @measureLabel = getMeasureLabel
         @measureUnits = getMeasureUnits
       end
@@ -264,10 +264,8 @@ module Agav
               (c.getWidthString == lastPart[2]) &&
               (c.getThicknessString == lastPart[3]) &&
               (c.getMaterial == lastPart[4])
-            puts "parts matched " + c.getName + " l=" + c.getLength.to_s + " w=" + c.getWidth.to_s + " t=" + c.getThickness.to_s + " m=" + c.getMaterial
             partCount = partCount + 1
-          elsif (lastPart != firstPart)
-            puts "parts did not match " + c.getName + " l=" + c.getLength.to_s + " w=" + c.getWidth.to_s + " t=" + c.getThickness.to_s + " m=" + c.getMaterial
+          elsif lastPart != firstPart
             component = component + row
             partId = partId + 1
             partCount = 1
@@ -278,10 +276,10 @@ module Agav
           #cols[2]=c.getSubAssemblyName
           cols[2] = partCount.to_s
 
-          cols[3] = c.getUp.material
-          cols[4] = c.getDown.material
-          cols[5] = c.getLeft.material
-          cols[6] = c.getRight.material
+          cols[3] = c.getUp.output_index.to_s
+          cols[4] = c.getDown.output_index.to_s
+          cols[5] = c.getLeft.output_index.to_s
+          cols[6] = c.getRight.output_index.to_s
 
           cols[7] = c.getName
           cols[8] = getPartPrefix() + Furnishare::integer_to_fws(3, partId)
@@ -291,37 +289,27 @@ module Agav
           # When I find a way to automatically discover which way the user needs to have this, then this can
           # be replaced with some external check - or else decimal to comma can return the string
           # unchanged.
-          #cols[6]=c.getBoardFeet.to_s
-          #cols[7]=((c.getBoardFeet)*(partCount)).to_s
-          #cols[8]=((c.getTotalLength)*(partCount)).to_s
           cols[10] = Furnishare::decimal_to_comma(c.getBoardFeet.to_s)
-          # Multiply the quantity of the same part by the board feet and lengths to get the totals for that part
-          # The results will be a float so needs to be rounded to produce reasonable sized decimal numbers
-          roundedBoardFeetTotal = Furnishare::float_round_to(@roundToNumOfDigits, (c.getBoardFeet * partCount))
-          roundedTotalLengthTotal = Furnishare::float_round_to(@roundToNumOfDigits, (c.getTotalLength * partCount))
-          cols[11] = Furnishare::decimal_to_comma(roundedBoardFeetTotal.to_s)
-          cols[12] = Furnishare::decimal_to_comma(roundedTotalLengthTotal.to_s)
+          cols[11] = "0"
+          cols[12] = "0"
 
           cols[13] = c.getMaterial
           row = getRow(cols)
           lastPart = [c.getName, c.getLengthString, c.getWidthString, c.getThicknessString, c.getMaterial]
-          #lastPart = [c.getName,c.getSubAssemblyName,c.getLengthString,c.getWidthString,c.getThicknessString, c.getMaterial]
 
-          ## Add the square feet
-          @totalBF = @totalBF + c.getBoardFeet
           inList = false
-          for d in @materialList
+          @materialList.each { |d|
             if (d[0] == c.getMaterial)
               d[1] = d[1] + c.getBoardFeet
               inList = true
             end
-          end
+          }
 
           if (!inList)
             @materialList = @materialList.push([c.getMaterial, c.getBoardFeet])
           end
 
-        end #for c
+        end
 
         ##Output last row
         component = component + row

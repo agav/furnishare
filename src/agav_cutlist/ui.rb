@@ -10,7 +10,7 @@ module Agav
     #-----------------------------------------------------------------------------
     class UiBase
       def initialize(model_name)
-        @modelName = model_name
+        @model_name = model_name
       end
 
       #base title used for all html pages - to indicate the version of cutlist being used.
@@ -18,7 +18,7 @@ module Agav
 
       @@furnishare_ui_location = '/furnishare.html'
 
-      @@furnishare_result_location = '/cutlistresult.html'
+      @@furnishare_result_location = '/furnishare_result.html'
 
       def getVersionHtmlTitle
         return @@title
@@ -73,7 +73,7 @@ module Agav
         @dialog.add_action_callback("handleRun") { |d, parameters_json_string|
           parse_input_string(parameters_json_string)
           reporter = Reporter.new
-          reporter.sketchupInit(@partlist_options)
+          reporter.sketchupInit(@furnishare_options)
         }
         @dialog.add_action_callback("handleClose") { |d, p|
           @dialog.close()
@@ -102,33 +102,18 @@ module Agav
         return nil
       end
 
-      def parse_input_string(params_json_string)
-        params_hash = JSON.parse(params_json_string)
-        @partlist_options = get_parts_list_options()
-
+      def parse_input_string(options_json_string)
+        @furnishare_options = JSON.parse(options_json_string)
       end
 
-      def get_parts_list_options()
-        part_list_options = {
-            :compactList => true,
-            :printPage => true,
-            :showComps => true,
-            :showSheet => true,
-            :showParts => true,
-            :partWords => ["hello"],
-            :sheetWords => ["world"]
-        }
-
-        return part_list_options
-      end
 
     end
 
     class ResultGui < UiBase
 
       def openDialog
-        @cutlistWindowTitle = getVersionHtmlTitle + " - part list " + @modelName
-        @resDialog = UI::WebDialog.new(@cutlistWindowTitle, true, nil, 1000, 850, 250, 150, true)
+        @windowTitle = getVersionHtmlTitle + " - part list " + @model_name
+        @resDialog = UI::WebDialog.new(@windowTitle, true, nil, 1000, 850, 250, 150, true)
         @resDialog.set_file(File.dirname(__FILE__) + getResultHtmlLocation)
       end
 
@@ -155,7 +140,7 @@ module Agav
     class LayoutGui < ResultGui
 
       def openDialog
-        @layoutWindowTitle = getVersionHtmlTitle + " - " + "Layout" + getProjectLabelPrefix + @modelName
+        @layoutWindowTitle = getVersionHtmlTitle + " - " + "Layout" + getProjectLabelPrefix + @model_name
         @resDialog = UI::WebDialog.new(@layoutWindowTitle, true, nil, 1000, 900, 300, 150, true)
         @resDialog.set_file(File.dirname(__FILE__) + getResultHtmlLocation)
         #@resDialog.set_position(200,200)

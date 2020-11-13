@@ -1,6 +1,6 @@
 require 'sketchup'
 require 'extensions'
-require 'agav_cutlist/cutlistutl'
+require 'agav_cutlist/utils'
 
 module Agav
 	module Furnishare

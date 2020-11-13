@@ -19,6 +19,7 @@
             for (let i = 1; i <= 4; i++) {
                 if (document.getElementById('edge' + i + 'Thickness').value && document.getElementById('edge' + i + 'Words').value)
                     edges.push({
+                        "index": i,
                         "thickness": escape(document.getElementById('edge' + i + 'Thickness').value),
                         "words": escape(document.getElementById('edge' + i + 'Words').value)
                     })
@@ -33,9 +34,9 @@
 
         function set_current_options(settings_json) {
             let settings = JSON.parse(settings_json);
-            settings.edges.forEach((edge, index) => {
-                document.getElementById('edge' + (index + 1) + 'Thickness').value = unescape(edge.thickness)
-                document.getElementById('edge' + (index + 1) + 'Words').value = unescape(edge.words)
+            settings.edges.forEach((edge) => {
+                document.getElementById('edge' + edge.index + 'Thickness').value = unescape(edge.thickness)
+                document.getElementById('edge' + edge.index + 'Words').value = unescape(edge.words)
             })
             document.getElementById("partWords").value = unescape(settings.partWords);
             document.getElementById("sheetWords").value = unescape(settings.sheetWords);

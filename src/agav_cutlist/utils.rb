@@ -91,10 +91,16 @@ module Agav
       (float * 10 ** x).round.to_f / 10 ** x
     end
 
+
     # print an integer as a fixed width field of size width.
     # Pads with 0's if too short, it will truncate if too long.
     def Furnishare.integer_to_fws(width, integer)
       val = "%0#{width}d" % integer.to_s
+    end
+
+
+    def Furnishare.length_to_mm(value)
+      value.mm.to_s.tr(@@decimalNotation, '.').to_s.gsub(/[\.]?0* mm$/, '')
     end
 
     # This will html-ise a string so that we don't have problems displaying in html
@@ -169,9 +175,6 @@ module Agav
       match = string.match pattern
       if (match)
         val = string.gsub(/[.]/, "#{Furnishare::decimalNotation}")
-        #DEBUG
-        #puts "decimal_to_comma: " + string + " converted to " + val
-        #DEBUG
         return val
       else
         return string
@@ -202,6 +205,36 @@ module Agav
         }
       end
     end
+
+    def Furnishare.wordMatchesTokens(tokens, string_value)
+      @found = false
+      @exclusionFound = false
+      tokens.each do |token|
+        matchWord = token
+
+        # check for the exclusion syntax ( a negative in front of the word)
+        exclude = ((token =~ /^-/) != nil)
+
+        # if  nothing follows the -, then ignore this list word - wrong syntax
+        next if ($' == '' && exclude)
+
+        # if the '-' matches the first character, use the part which didn't match as the search string
+        matchWord = $' if exclude
+
+        # see if the list word matches anywhere in the component name  - case insensitive
+        if ((string_value.index(/#{matchWord}/i)) != nil)
+          # Exclusions trump inclusions no matter where they are placed in the list
+          if (exclude)
+            @exclusionFound = true
+            @found = false
+          end
+          @found = true if (!@exclusionFound)
+        end
+      end
+
+      @found
+    end
+
 
     # Returns the current Cutlist Version
     def Furnishare.version

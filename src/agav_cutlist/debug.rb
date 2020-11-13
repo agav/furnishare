@@ -1,17 +1,15 @@
-module Agav::Restart
+module Agav
+  module Furnishare
 
-  # Reload extension by running this method from the Ruby Console:
-  #   Agav::RESTART.reload
-  def self.reload
-    original_verbose = $VERBOSE
-    $VERBOSE = nil
-    pattern = File.join(__dir__, '**/*.rb')
-    Dir.glob(pattern).each { |file|
-      # Cannot use `Sketchup.load` because its an alias for `Sketchup.require`.
-      load file
-    }.size
-  ensure
-    $VERBOSE = original_verbose
+    def self.reload(return_files = false)
+      original_verbose = $VERBOSE
+      $VERBOSE = nil
+      x = Dir.glob(File.join(__dir__, '*.{rb,rbs}')).each { |file|
+        load file
+      }
+      (return_files) ? x : x.length
+    ensure
+      $VERBOSE = original_verbose
+    end
   end
-
-end # module
+end

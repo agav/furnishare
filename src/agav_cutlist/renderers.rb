@@ -6,7 +6,7 @@ module Agav
 #########################
 class Renderer
   def initialize(modelName)
-    @modelName = modelName
+    @model_name = modelName
   end
   def getTitle(title)
   end ## end getTitle
@@ -109,7 +109,7 @@ end ## end classHtmlRenderer
 #-----------------------------------------------------------------------------
 class LayoutRenderer
   def initialize(modelName)
-    @modelName = modelName
+    @model_name = modelName
     @divNumber = 0
     @divName = ""
     @offsetY = 0
