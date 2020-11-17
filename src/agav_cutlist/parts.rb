@@ -68,7 +68,6 @@ module Agav
     end
 
 
-    ###Class Edge
     class Edge
       attr_accessor :material, :thickness, :output_index
 
@@ -77,8 +76,8 @@ module Agav
         @thickness = thickness
         @output_index = output_index
       end
-
     end
+
 
     ###Class PartList
 
@@ -87,7 +86,10 @@ module Agav
     # All lengths are stored in sketchup's default inches unless the name says otherwise
     #-----------------------------------------------------------------------------
     class CutListPart
-      def initialize(c, name, subAssemblyName, material, edge_material_options)
+
+      attr_reader :left, :right, :up, :down, :oriented
+
+      def initialize(c, name, subAssemblyName, edge_material_options)
         # always get the bounding box from the definition if it exists
         # components have definition attributes (same for all components) which is accessible through the component entity
         # groups also have definitions but it is not stored against the group, but you can search through the definitions list to
@@ -111,13 +113,6 @@ module Agav
         size_y = boundingBox.height.to_mm * scaley
         size_z = boundingBox.depth.to_mm * scalez
 
-        left_bound = Geom::BoundingBox.new
-        right_bound = Geom::BoundingBox.new
-        up_bound = Geom::BoundingBox.new
-        down_bound = Geom::BoundingBox.new
-        front = Geom::BoundingBox.new
-        back = Geom::BoundingBox.new
-
         #				       F,U,R	  U,R,F
         #        			   ↓      ↙
         # 			      6-------7
@@ -130,68 +125,41 @@ module Agav
         #      		↗		  ↑
         # 	   D,L,B	B,D,L
 
-
+        @should_rotate_90 = false
         if size_z < size_y and size_z < size_x
+          corners = [0, 1, 2, 3, 4, 5, 6, 7]
           @thickness = size_z
           @length = size_x
           @width = size_y
-          left_bound.add(boundingBox.corner(0), boundingBox.corner(2), boundingBox.corner(4), boundingBox.corner(6))
-          right_bound.add(boundingBox.corner(1), boundingBox.corner(3), boundingBox.corner(5), boundingBox.corner(7))
-          up_bound.add(boundingBox.corner(2), boundingBox.corner(3), boundingBox.corner(6), boundingBox.corner(7))
-          down_bound.add(boundingBox.corner(0), boundingBox.corner(1), boundingBox.corner(4), boundingBox.corner(5))
-          front.add(boundingBox.corner(4), boundingBox.corner(5), boundingBox.corner(6), boundingBox.corner(7))
-          back.add(boundingBox.corner(1), boundingBox.corner(1), boundingBox.corner(2), boundingBox.corner(3))
         elsif size_y < size_z and size_y < size_x
+          corners = [0, 4, 1, 5, 2, 6, 3, 7]
           @thickness = size_y
           @length = size_z
           @width = size_x
-          left_bound.add(boundingBox.corner(1), boundingBox.corner(1), boundingBox.corner(2), boundingBox.corner(3))
-          right_bound.add(boundingBox.corner(4), boundingBox.corner(5), boundingBox.corner(6), boundingBox.corner(7))
-          up_bound.add(boundingBox.corner(1), boundingBox.corner(3), boundingBox.corner(5), boundingBox.corner(7))
-          down_bound.add(boundingBox.corner(0), boundingBox.corner(2), boundingBox.corner(4), boundingBox.corner(6))
-          front.add(boundingBox.corner(2), boundingBox.corner(3), boundingBox.corner(6), boundingBox.corner(7))
-          back.add(boundingBox.corner(0), boundingBox.corner(1), boundingBox.corner(4), boundingBox.corner(5))
+          @should_rotate_90 = true #texture always aligned along X axis so we  change length and width (rotate) of detail to align textures
         else
+          corners = [0, 2, 4, 6, 1, 3, 5, 7]
           @thickness = size_x
           @length = size_y
           @width = size_z
-          left_bound.add(boundingBox.corner(0), boundingBox.corner(1), boundingBox.corner(4), boundingBox.corner(5))
-          right_bound.add(boundingBox.corner(2), boundingBox.corner(3), boundingBox.corner(6), boundingBox.corner(7))
-          up_bound.add(boundingBox.corner(4), boundingBox.corner(5), boundingBox.corner(6), boundingBox.corner(7))
-          down_bound.add(boundingBox.corner(1), boundingBox.corner(1), boundingBox.corner(2), boundingBox.corner(3))
-          front.add(boundingBox.corner(1), boundingBox.corner(3), boundingBox.corner(5), boundingBox.corner(7))
-          back.add(boundingBox.corner(0), boundingBox.corner(2), boundingBox.corner(4), boundingBox.corner(6))
         end
 
+        bounds = detect_bounds(corners, boundingBox)
 
-        dimCalculations()
-        @material = material
+        @material = c.material&.name || "not assigned"
         @name = strip(name, @length.to_s, @width.to_s, @thickness.to_s)
         @subAssemblyName = strip(subAssemblyName, @length.to_s, @width.to_s, @thickness.to_s)
-        @canRotate = true
-        @metricVolume = true
         @metric = Furnishare.metricModel?
-        @locationOnBoard = nil
 
-        @left = Edge.new()
-        @right = Edge.new()
-        @up = Edge.new()
-        @down = Edge.new()
+        faces = detect_faces(bounds, c)
 
-        c.entities.each do |entity|
-          if (entity.is_a? Sketchup::Face) && (entity.material != nil)
-            face_center = entity.bounds.center
-            if left_bound.contains?(face_center)
-              @left.material = entity.material.name
-            elsif right_bound.contains?(face_center)
-              @right.material = entity.material.name
-            elsif up_bound.contains?(face_center)
-              @up.material = entity.material.name
-            elsif down_bound.contains?(face_center)
-              @down.material = entity.material.name
-            end
-          end
-        end
+        @oriented = c.material&.texture != nil
+
+        @left = Edge.new(faces[:left]&.material&.name)
+        @right = Edge.new(faces[:right]&.material&.name)
+        @up = Edge.new(faces[:up]&.material&.name)
+        @down = Edge.new(faces[:down]&.material&.name)
+
 
         [@left, @right, @up, @down].each do |edge|
           if edge.material == nil
@@ -204,11 +172,67 @@ module Agav
           end
         end
 
+        if @should_rotate_90
+          tmp_up = @up
+          @up = @right
+          @right = @down
+          @down = @left
+          @left = tmp_up
+          tmp_width = @width
+          @width = @length
+          @length = tmp_width
+        end
+
         @cutting_length = (@length.mm - @left.thickness - @right.thickness).to_mm
         @cutting_width = (@width.mm - @up.thickness - @down.thickness).to_mm
 
-
       end
+
+
+      def detect_bounds(corners, bounding_box)
+        left_bound = Geom::BoundingBox.new
+        left_bound.add(bounding_box.corner(corners[0]), bounding_box.corner(corners[2]), bounding_box.corner(corners[4]), bounding_box.corner(corners[6]))
+        right_bound = Geom::BoundingBox.new
+        right_bound.add(bounding_box.corner(corners[1]), bounding_box.corner(corners[3]), bounding_box.corner(corners[5]), bounding_box.corner(corners[7]))
+        up_bound = Geom::BoundingBox.new
+        up_bound.add(bounding_box.corner(corners[2]), bounding_box.corner(corners[3]), bounding_box.corner(corners[6]), bounding_box.corner(corners[7]))
+        down_bound = Geom::BoundingBox.new
+        down_bound.add(bounding_box.corner(corners[0]), bounding_box.corner(corners[1]), bounding_box.corner(corners[4]), bounding_box.corner(corners[5]))
+        front_bound = Geom::BoundingBox.new
+        front_bound.add(bounding_box.corner(corners[4]), bounding_box.corner(corners[5]), bounding_box.corner(corners[6]), bounding_box.corner(corners[7]))
+        back_bound = Geom::BoundingBox.new
+        back_bound.add(bounding_box.corner(corners[0]), bounding_box.corner(corners[1]), bounding_box.corner(corners[2]), bounding_box.corner(corners[3]))
+
+        {left: left_bound, right: right_bound, up: up_bound, down: down_bound, front: front_bound, back: back_bound}
+      end
+
+      def detect_faces(bounds, component)
+
+        entities = nil
+        if component.is_a?(Sketchup::ComponentInstance)
+          entities = component.definition.entities
+        elsif component.is_a?(Sketchup::Group)
+          entities = component.entities
+        end
+
+        faces = {}
+
+        entities.each do |entity|
+          if entity.is_a?(Sketchup::Face)
+            face_center = entity.bounds.center
+            bounds.each do |key, bound|
+              if bound.contains?(face_center)
+                if faces[key] == nil || faces[key].area < entity.area
+                  faces[key] = entity
+                end
+              end
+            end
+          end
+        end
+
+        faces
+      end
+
 
       def edgeMaterial(edge_material_options, material)
         edge_material_options.each do |edge_material_option|
@@ -219,30 +243,6 @@ module Agav
         nil
       end
 
-      def dimCalculations
-        @area = @length * @width
-
-        # part in pixels scale  12in=100px
-        # Useful for display purpose but not accurate enough for part comparisons
-        @length_px = Furnishare::float_round_to(0, ((@length / 12) * 100).to_f)
-        @width_px = Furnishare::float_round_to(0, ((@width / 12) * 100).to_f)
-      end
-
-      def getLeft
-        @left
-      end
-
-      def getRight
-        @right
-      end
-
-      def getUp
-        @up
-      end
-
-      def getDown
-        @down
-      end
 
       # Bubble sort
       # sorts in ascending order
@@ -338,18 +338,6 @@ module Agav
         Furnishare::float_round_to(6, (1 * (0.092903040189522201889968968842358)))
       end
 
-      def getCanRotate
-        @canRotate
-      end
-
-      def getLengthPx
-        @length_px
-      end
-
-      def getWidthPx
-        @width_px
-      end
-
       def addLocationOnBoard(coords)
         # top left coordinate of the location of the part on the board
         # stored in standard dimension units ( ie: everything is relative to the actual size of the board)
@@ -408,8 +396,8 @@ module Agav
       # material - is a string of the material for this entity
       # nominalMargin is a number in 16ths of the allowance required in the thickness over the final part size
       # quarter is an array of 4 elements, being boolean values of fourq, fiveq, sixq and eightq respectively as entered by the user
-      def initialize(c, name, subAssemblyName, material, edge_materials)
-        super(c, name, subAssemblyName, material, edge_materials)
+      def initialize(c, name, subAssemblyName, edge_materials)
+        super(c, name, subAssemblyName, edge_materials)
       end
 
       def dimCalculations

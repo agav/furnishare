@@ -113,54 +113,38 @@ module Agav
 
       def openDialog
         @windowTitle = getVersionHtmlTitle + " - part list " + @model_name
-        @resDialog = UI::WebDialog.new(@windowTitle, true, nil, 1000, 850, 250, 150, true)
+        @resDialog = UI::HtmlDialog.new(
+            :dialog_title => @windowTitle,
+            :preferences_key => "ua.com.agav.results",
+            :scrollable => true,
+            :resizable => true,
+            :width => 1000,
+            :height => 850,
+            :left => 250,
+            :top => 150,
+            :min_width => 50,
+            :min_height => 50,
+            :max_width => 1000,
+            :max_height => 1000,
+            :style => UI::HtmlDialog::STYLE_DIALOG)
+
         @resDialog.set_file(File.dirname(__FILE__) + getResultHtmlLocation)
       end
 
       def addCallbacks
         @resDialog.add_action_callback("handleClose") { |d, p| @resDialog.close() }
-        @resDialog.set_on_close {
+        @resDialog.add_action_callback("handleDocumentLoaded") { |d, p| @resDialog.execute_script("handleResults('#{@results}');") }
+
+        @resDialog.set_on_closed{
           @resDialog.execute_script("handleResults('No results');");
         }
       end
 
       def display
-        @resDialog.show {
-          @resDialog.execute_script("handleResults(\'#{@results}\');");
-        }
+        @resDialog.show
       end
 
     end
-
-    ## ResultGui class
-
-    # class LayoutGui - for the output of the layout when html output has been selected
-    # based on ResultGui but the position is offset, so that if both output types are
-    # requested, they dopn't end up displaying on top of each other.
-    class LayoutGui < ResultGui
-
-      def openDialog
-        @layoutWindowTitle = getVersionHtmlTitle + " - " + "Layout" + getProjectLabelPrefix + @model_name
-        @resDialog = UI::WebDialog.new(@layoutWindowTitle, true, nil, 1000, 900, 300, 150, true)
-        @resDialog.set_file(File.dirname(__FILE__) + getResultHtmlLocation)
-        #@resDialog.set_position(200,200)
-      end
-
-      def addCallbacks
-        @resDialog.add_action_callback("handleClose") { |d, p| @resDialog.close() }
-      end
-
-      def display
-        #   debug
-        #puts @results
-        @resDialog.show {
-          @resDialog.execute_script("handleLayoutScript(\'#{@results}\');");
-        }
-      end
-
-    end
-
-    # layoutGui class
 
   end # module CutList
 end # module Agav

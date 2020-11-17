@@ -62,9 +62,9 @@ class HtmlRenderer < Renderer
     html = ""
     html = html+"<tr>"
     for h in headers
-      html = html+"<td>"
+      html = html+"<th>"
       html = html+"<B>"+h+"</B>"
-      html = html+"</td>"
+      html = html+"</th>"
     end ## end for
     html = html+"</tr>"
     return html

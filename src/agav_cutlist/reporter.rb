@@ -137,10 +137,10 @@ module Agav
 
                 sheet_words = @options["sheetWords"].split(" ")
                 if Furnishare.wordMatchesTokens(sheet_words, material) || Furnishare.wordMatchesTokens(sheet_words, name)
-                  sheetPart = SheetPart.new(c, name, subAssemblyName, material, @options["edges"])
+                  sheetPart = SheetPart.new(c, name, subAssemblyName, @options["edges"])
                   @sheetPartList.add(sheetPart)
                 else
-                  solidPart = SolidPart.new(c, name, subAssemblyName, material, @options["edges"])
+                  solidPart = SolidPart.new(c, name, subAssemblyName, @options["edges"])
                   @solidPartList.add(solidPart)
                 end
               end

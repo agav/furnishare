@@ -238,8 +238,7 @@ module Agav
 
       def getHeadingArray()
         #headings=["Part#","Quantity","Sub-Assembly","Description","Length(L)","Width(W)","Thickness(T)",@measureLabel + " (per)",
-        headings = ["Length(L)", "Width(W)", "Quantity", "U", "D", "L", "R", "Part#", "Description", "Thickness(T)", @measureLabel + " (per)",
-                    @measureLabel + " (total)", "Total Length (" + @measureUnits + ")", "Material"]
+        headings = %w[Length(L) Width(W) Quantity U D L R Texture Name Thickness(T) Material]
         return headings
       end
 
@@ -273,28 +272,22 @@ module Agav
 
           cols[0] = c.getLengthString
           cols[1] = c.getWidthString
-          #cols[2]=c.getSubAssemblyName
           cols[2] = partCount.to_s
 
-          cols[3] = c.getUp.output_index.to_s
-          cols[4] = c.getDown.output_index.to_s
-          cols[5] = c.getLeft.output_index.to_s
-          cols[6] = c.getRight.output_index.to_s
+          cols[3] = c.up.output_index.to_s
+          cols[4] = c.down.output_index.to_s
+          cols[5] = c.left.output_index.to_s
+          cols[6] = c.right.output_index.to_s
 
-          cols[7] = c.getName
-          cols[8] = getPartPrefix() + Furnishare::integer_to_fws(3, partId)
+
+          cols[7] = c.oriented.to_s
+
+          cols[8] = c.getName
           cols[9] = c.getThicknessString
-          # the next three lines are modified specifically for european users who default to an English version
-          # of Sketchup - as Sketchup does not seem to convert these numericals to have comma as the decimal
-          # When I find a way to automatically discover which way the user needs to have this, then this can
-          # be replaced with some external check - or else decimal to comma can return the string
-          # unchanged.
-          cols[10] = Furnishare::decimal_to_comma(c.getBoardFeet.to_s)
-          cols[11] = "0"
-          cols[12] = "0"
 
-          cols[13] = c.getMaterial
+          cols[10] = c.getMaterial
           row = getRow(cols)
+
           lastPart = [c.getName, c.getLengthString, c.getWidthString, c.getThicknessString, c.getMaterial]
 
           inList = false
@@ -422,260 +415,6 @@ module Agav
     end
 
     ##class CompactDisplaySheet
-
-
-    #########################
-    # CutList PLus csv display                       #
-    #########################
-    class ClpDisplay < Display
-
-      def getTitleName()
-        return "";
-      end
-
-      def getHeadingArray()
-        headings = ["Part #", "Sub-Assembly", "Description", "Copies",
-                    "Thickness(T)", "Width(W)", "Length(L)", "Material Type", "Material Name", "Can Rotate"]
-        return headings
-      end
-
-      def getAmountTitleName()
-        return ""
-      end
-
-      def getMaterialTitleName()
-        return ""
-      end
-
-      def isAmountEnabled()
-        return false
-      end
-
-      def isMaterialEnabled()
-        return false
-      end
-
-      def getMaterialType()
-        return "DL"
-      end
-
-      def processRows(inList)
-        component = ""
-        cols = Array.new
-        i = 1
-        ii = 0
-        ix = ""
-        cx = ""
-        for c in inList
-          i = i + 1 if c.getName != cx and cx != ""
-          ii = 1 if c.getName != cx
-          # construct the part name by concatenating the part type abbreviation (the prefix)
-          # with the numbering scheme. The first digit is incremented for each unique part name
-          # and then the part after the '-' is the number of the part if there is more than 1
-          # Make sure the number of digits generated is the same, regardless of the value,  so that sorting by part number
-          # puts it in the correct order. Use 3 digits for part number and 2 digits for subpart number.
-          # we do this by extending the integer class to convert to string values.
-          ix = Furnishare::integer_to_fws(3, i) + "-" + Furnishare::integer_to_fws(2, ii)
-          cols[0] = getPartPrefix() + ix
-          cols[1] = c.getSubAssemblyName
-          cols[2] = c.getName
-          cols[3] = "1"
-          # CutListPlus accepts all sketchup units except meters
-          # If inches, then the inches symbol " needs to be stripped with CutList::string_to_clp since clp won't accept it - this is probably a CLP bug
-          # If meters then we will convert to inches - this is sorted with the convertMeasureForCLP method
-          cols[4] = Furnishare::string_to_clp(c.convertMeasureForCLP(c.getThickness).to_s)
-          cols[5] = Furnishare::string_to_clp(c.convertMeasureForCLP(c.getWidth).to_s)
-          cols[6] = Furnishare::string_to_clp(c.convertMeasureForCLP(c.getLength).to_s)
-          cols[7] = getMaterialType()
-          cols[8] = c.getMaterial
-          cols[9] = "yes"
-          component = component + getRow(cols)
-          ### gives sub-part numbers to same named compos; last = total
-          ii = ii + 1
-          cx = c.getName
-        end ## end for
-
-        return component
-      end
-
-      ## end processRows
-
-
-    end
-
-    ##class ClpDisplay
-
-    #########################
-    # ClpDisplaySheet                                  #
-    #########################
-    class ClpDisplaySheet < ClpDisplay
-
-      def getPartPrefix()
-        return "S-"
-      end
-
-      def getMaterialType()
-        return "SG"
-      end
-
-    end
-
-    ##class ClpDisplaySheet
-
-
-    #########################
-    # Compact CutList Plus csv                      #
-    #########################
-    class CompactClpDisplay < CompactDisplay
-
-      def getTitleName()
-        return "";
-      end
-
-      def getHeadingArray()
-        headings = ["Part #", "Sub-Assembly", "Description", "Copies",
-                    "Thickness(T)", "Width(W)", "Length(L)", "Material Type", "Material Name", "Can Rotate"]
-        return headings
-      end
-
-      def getAmountTitleName()
-        return ""
-      end
-
-      def getMaterialTitleName()
-        return ""
-      end
-
-      def isAmountEnabled()
-        return false
-      end
-
-      def isMaterialEnabled()
-        return false
-      end
-
-      def getMaterialType()
-        return "DL"
-      end
-
-      def processRows(inList)
-
-        component = ""
-        partId = 1
-        partCount = 1
-        firstPart = ["", "", 0, 0, 0, ""]
-        lastPart = firstPart
-        cols = Array.new
-        row = ""
-
-        for c in inList
-          # combine like parts but only if they are identical ( same name, dimensions and material)
-          # If parts match the name and dimensions and material, then they are considered the
-          # same and will be displayed in the compact form
-          if ((c.getName == lastPart[0]) &&
-              (c.getSubAssemblyName == lastPart[1]) &&
-              (c.getLength == lastPart[2]) &&
-              (c.getWidth == lastPart[3]) &&
-              (c.getThickness == lastPart[4]) &&
-              (c.getMaterial == lastPart[5]))
-            puts "parts matched " + c.getName + " l=" + c.getLength.to_s + " w=" + c.getWidth.to_s + " t=" + c.getThickness.to_s + " m=" + c.getMaterial
-            partCount = partCount + 1
-          elsif (lastPart != firstPart)
-            puts "parts did not match " + c.getName + " l=" + c.getLength.to_s + " w=" + c.getWidth.to_s + " t=" + c.getThickness.to_s + " m=" + c.getMaterial
-            component = component + row
-            partId = partId + 1
-            partCount = 1
-          end ##if
-
-          cols[0] = getPartPrefix() + Furnishare::integer_to_fws(3, partId)
-          cols[1] = c.getSubAssemblyName
-          cols[2] = c.getName
-          cols[3] = partCount.to_s
-
-          # CutListPlus accepts all sketchup units except meters
-          # If inches, then the inches symbol " needs to be stripped with CutList::string_to_clp since clp won't accept it - this is probably a CLP bug
-          # If meters then we will convert to inches - this is sorted with the convertMeasureForCLP method
-          cols[4] = Furnishare::string_to_clp(c.convertMeasureForCLP(c.getThickness).to_s)
-          cols[5] = Furnishare::string_to_clp(c.convertMeasureForCLP(c.getWidth).to_s)
-          cols[6] = Furnishare::string_to_clp(c.convertMeasureForCLP(c.getLength).to_s)
-          cols[7] = getMaterialType()
-          cols[8] = c.getMaterial
-          cols[9] = "yes"
-          row = getRow(cols)
-          lastPart = [c.getName, c.getSubAssemblyName, c.getLength, c.getWidth, c.getThickness, c.getMaterial]
-        end #for c
-
-        ##Output last row
-        component = component + row
-        return component
-      end
-
-      ## end processRows
-
-    end
-
-    ##class CompactClpDisplay
-
-
-    #########################
-    # CompactClpDisplaySheet                       #
-    #########################
-    class CompactClpDisplaySheet < CompactClpDisplay
-
-      def getPartPrefix()
-        return "S-"
-      end
-
-      def getMaterialType()
-        return "SG"
-      end
-
-    end
-
-    ##class CompactClpDisplaySheet
-
-    #########################
-    # CompactClpDisplayPart                         #
-    #########################
-    class CompactClpDisplayPart < CompactClpDisplay
-
-      def getPartPrefix()
-        return "P-"
-      end
-
-      def getMaterialType()
-        return "HW"
-      end
-
-      def processRows(inList)
-
-        component = ""
-        cols = Array.new
-
-        if (inList.parts.length > 0)
-          for p in 0..(inList.parts.length - 1)
-            cols[0] = getPartPrefix() + Furnishare::integer_to_fws(3, (p + 1))
-            cols[1] = "" #subAssemblyName
-            cols[2] = "" # description
-            cols[3] = inList.partCount[p].to_s # copies
-            cols[4] = "" # T
-            cols[5] = "" # W
-            cols[6] = "" # L
-            cols[7] = getMaterialType() # material type
-            cols[8] = inList.parts[p] # material name - in CLP, material name is actually the description for HW parts
-            cols[9] = "yes" # can rotate
-            component = component + getRow(cols)
-          end ###for
-        end ###if
-        return component
-
-      end
-
-      ## end processRows
-
-    end
-
-    ##class CompactClpDisplayPart
 
     #########################
     # DisplaySheet                                      #
