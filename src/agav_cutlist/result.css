@@ -13,13 +13,8 @@ table#cutlistTable {
 table#buttonsTable {
 	padding: 2px;
 }
-/*
-td {
-	padding: 4px;
-}
-*/
-h4.cutlist {
-	color: #7d7d4f;
+h4.furnishare {
+	color: #153772;
 	font-size: 14px;
 	font-weight: bold;
 }

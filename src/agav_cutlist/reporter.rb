@@ -41,7 +41,7 @@ module Agav
           bits = component.definition.entities
         elsif component.is_a?(Sketchup::Group)
           bits = component.entities
-        end ##if
+        end
 
         for f in bits
           if f.is_a? (Sketchup::Face)
@@ -73,7 +73,6 @@ module Agav
       # When this method is first called, the subAssemblyName is the project, as everthing belongs to the project by default.
       #-----------------------------------------------------------------------------
       def getSubComponents(entityList, level, subAssemblyName)
-        puts "checking level=" + level.to_s if Furnishare.verboseComponentDiscovery
         model = Sketchup.active_model
         selection = model.selection
         # the levelHasComponents flag is used to indicate if we have found any parts at this level
@@ -120,11 +119,11 @@ module Agav
               # Note: this calls itself recursively until there are no sub-components at the particular level we are looking at
               # compName is the name of the current part which we are exploring to a deeper level ie: the subassembly name
               # Even if this part is ultimtely not added ( because it has sub-conponents) we can record which sub-assembly it belongs to its chold parts
-              hasSubComponents = getSubComponents(subList, level + 1, compName)
-              if (!hasSubComponents)
+              has_sub_components = getSubComponents(subList, level + 1, compName)
+              if (!has_sub_components)
                 name = " " + compName
 
-                if (name == " ")
+                if name == " "
                   name = "noname"
                 end
 

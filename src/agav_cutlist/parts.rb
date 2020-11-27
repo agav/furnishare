@@ -76,18 +76,17 @@ module Agav
         @thickness = thickness
         @output_index = output_index
       end
+
+      def ===(other)
+        material == other.material &&
+            thickness == other.thickness
+      end
     end
 
 
-    ###Class PartList
-
-    #-----------------------------------------------------------------------------
-    # cutlist  base class - represent all cutlist parts of the model, be they solid or sheet
-    # All lengths are stored in sketchup's default inches unless the name says otherwise
-    #-----------------------------------------------------------------------------
     class CutListPart
 
-      attr_reader :left, :right, :up, :down, :oriented
+      attr_reader :left, :right, :up, :down, :oriented, :thickness, :width, :length, :material, :name, :subAssemblyName
 
       def initialize(c, name, subAssemblyName, edge_material_options)
         # always get the bounding box from the definition if it exists
@@ -243,40 +242,15 @@ module Agav
         nil
       end
 
-
-      # Bubble sort
-      # sorts in ascending order
-      def getSortedArray(array)
-        size = array.size()
-        pass = size
-        for i in (0..pass - 2)
-          for j in (0..pass - 2)
-            if (array[j + 1] < array[j])
-              tmp = array[j]
-              array[j] = array[j + 1]
-              array[j + 1] = tmp
-            end
-          end
-        end
-        return array
-      end
-
-      # used to make the name unique if no name was
-      # given to it. The new name is based on the "noname_" + the
-      #concatenation of the dimensions of the part. This allows us
-      # to identify identical parts even if they have no name.
-      # The order of the dimensions is arbitrary as long as
-      # it is consistent but typically same order as the output
-      # ie: length, width, thickness
-      def strip(name, inV1, inV2, inV3)
+      def strip(name, v1, v2, v3)
         val = name
-        if (name == "noname")
-          val = ("noname_" + inV1 + inV2 + inV3)
+        if name == "noname"
+          val = ("noname_" + v1 + v2 + v3)
           val = val.gsub(/[ ]/, "_")
           val = val.gsub(/['~"]/, "")
           val = val.gsub(/[\/]/, "-")
-        end ## end if
-        return val
+        end
+        val
       end
 
       def getLengthString
@@ -287,100 +261,31 @@ module Agav
         Furnishare.length_to_mm(@cutting_width)
       end
 
-      def getWidth
-        @width
-      end
-
-      def getLength
-        @length
-      end
-
       def getThicknessString
-        @thickness.mm.to_s.delete(' mm')
-      end
-
-      def getThickness
-        @thickness
-      end
-
-      #aka c[5]
-      def getMaterial
-        @material
-      end
-
-      #aka c[0]
-      def getName
-        @name
-      end
-
-      def getSubAssemblyName
-        @subAssemblyName
-      end
-
-      #aka c[4] for solid parts
-      def getBoardFeet
-        #1 mm = 0.0393700787 inches
-        # 1 in = 25.40000002590800002642610026955 mm
-        # 1bd ft = 144 cu in
-        # 1bd ft = 2359.7372232207958956904236222001 cu cm
-        # divide by 1000000 to get cu.m.
-        #(@boardFeet*2359.7424).round_to(6)
-        #(@width.to_l*@length.to_l*@thickness.to_l*2359.7383).round_to(6)
-        Furnishare::float_round_to(6, (1 * (2359.7372232207958956904236222001 / 1000000)))
-      end
-
-      def getBoardFeetLabel
-        return "Cubic m"
-      end
-
-      # aka c[4] for sheet parts
-      def getSquareFeet
-        Furnishare::float_round_to(6, (1 * (0.092903040189522201889968968842358)))
-      end
-
-      def addLocationOnBoard(coords)
-        # top left coordinate of the location of the part on the board
-        # stored in standard dimension units ( ie: everything is relative to the actual size of the board)
-        @locationOnBoard = coords
-      end
-
-      def getLocationOnBoard
-        # return standard dimennsion units ( ie: everything is relative to the actual size of the board)
-        @locationOnBoard
-      end
-
-      def getLocationOnBoardInPx
-        # return top left coordinate (x,y) of the part's location on the board for drawing purposes
-        # convert the standard dimension units expressed to Px ( 100px/inch)
-        Array[Furnishare::float_round_to(0, ((@locationOnBoard[0] / 12) * 100).to_f), Furnishare::float_round_to(0, ((@locationOnBoard[1] / 12) * 100).to_f)]
-      end
-
-      def changeWidth(width)
-        @width = width.inch
-        dimCalculations()
-      end
-
-      def changeThickness(thickness)
-        @thickness = thickness.inch
-        dimCalculations()
-      end
-
-      def convertMeasureForCLP(measure)
-        # CutList Plus has some import limitations. Inches, feet, mm and cm are
-        # accepted but not meters. So here we convert the measure back to a float in inches
-        # if the model is in meters. This is just for CutListPlus import file generation
-        if Furnishare::modelInMeters?
-          measure = Furnishare::float_round_to(4, measure.to_f)
-        end
-        return measure
+        Furnishare.length_to_mm(@thickness)
       end
 
       def deep_clone
         Marshal::load(Marshal.dump(self))
       end
 
+      def ===(other)
+        other &&
+            left === other.left &&
+            right === other.right &&
+            up === other.up &&
+            down === other.down &&
+            oriented == other.oriented &&
+            getThicknessString == other.getThicknessString &&
+            getWidthString == other.getWidthString &&
+            getLengthString == other.getLengthString &&
+            material == other.material &&
+            name == other.name &&
+            subAssemblyName == other.subAssemblyName
+      end
+
       def summary
-        return (getName + " (" + getLengthString + ", " + getWidthString + ", " + getThicknessString + ") " + getMaterial)
+        return (name + " (" + getLengthString + ", " + getWidthString + ", " + getThicknessString + ") " + @material)
       end
     end
 
@@ -458,7 +363,7 @@ module Agav
 
       def addToPartDatabase(cutListPart)
         return if cutListPart == nil
-        material = cutListPart.getMaterial
+        material = cutListPart.material
         # get thickness and convert to string to use as an index in the hash
         thickness = cutListPart.getThickness.inch.to_s
         #puts " thickness=" +  thickness.to_s

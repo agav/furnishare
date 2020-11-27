@@ -50,13 +50,10 @@ class HtmlRenderer < Renderer
   def getTitle(tableTitle)
     colspan = 2
     html = ""
-    #html = html+"<BR><B><H4 style=\"color:#7d7d4f\">"+tableTitle+"</H4></B>"
-    # color/size is controlled by result.css
-    html = html+"<BR><H4 class=\"cutlist\">"+tableTitle+"</H4>"
-    #html = html+"<table id=\"cutlistTable\" cellpadding=4 cellspacing=0 frame=border border=\"1\" bordercolor=#8c8c8c rules=groups bgcolor=#ECF0F3>"
+    html = html+"<H4 class=\"furnishare\">"+tableTitle+"</H4>"
     html = html+"<table id=\"cutlistTable\" >"
     return html
-  end ## end getTitle
+  end
 
   def getHeaderRow(headers)
     html = ""
